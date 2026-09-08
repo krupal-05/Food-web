@@ -1,0 +1,21 @@
+# Dependencies
+
+node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# Uploaded images
+backend/uploads/products/*
+
+# Build files
+frontend/dist/
+frontend/build/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
