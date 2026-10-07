@@ -1,12 +1,15 @@
 import mongoose from "mongoose";
 
- const dbConnection = ()=>{
+const dbConnection = async () => {
   try {
-    const db = mongoose.connect(process.env.MONGODB_URL)
-    console.log("DB connected")
+    const mongoUrl = process.env.MONGODB_URL || "mongodb://localhost:27017/food_delivery_db";
+    const conn = await mongoose.connect(mongoUrl);
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    return conn;
   } catch (error) {
-    console.log("Database Failed to connect ",error)
+    console.error("Database failed to connect:", error.message);
+    process.exit(1);
   }
- }
+};
 
- export default dbConnection;
+export default dbConnection;
