@@ -3,123 +3,73 @@
 ![Node.js](https://img.shields.io/badge/Backend-Node.js%20v20+-green.svg)
 ![Express.js](https://img.shields.io/badge/Framework-Express%20v5-black.svg)
 ![MongoDB](https://img.shields.io/badge/Database-MongoDB%20%2F%20Mongoose-emerald.svg)
-![React](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-blue.svg)
+![React](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite%208-blue.svg)
 ![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38bdf8.svg)
 ![License](https://img.shields.io/badge/License-ISC-orange.svg)
 
-**FoodX** is a modern, full-stack, hyperlocal food discovery and logistics fulfillment platform inspired by premier benchmarks like **Swiggy** and **Zomato**. It connects hungry consumers with verified restaurants and a dedicated fleet of delivery riders, featuring a **Kitchen Display System (KDS)** for merchant partners, **Real-Time GPS Courier Milestones**, and **3-Tier Role-Based Access Control (RBAC)**.
+**FoodX** is a modern, enterprise-grade, hyperlocal food delivery and restaurant management system. The platform is architected with a decoupled REST backend and a lightning-fast React 19 single-page application featuring **3 dedicated role portals** (Customer, Restaurant Owner, and Super Admin), **Live Kitchen Fulfillment (KDS)**, **Dynamic Cart & Checkout**, and **Role-Based Access Control (RBAC)**.
 
 ---
 
-## 🌟 Key Highlights & Ecosystem Features
+## 🌟 Architecture & Portals
 
-### 👤 1. Consumer Discovery & Delivery (Swiggy / Zomato Benchmarks)
-- **Interactive Location Selector**: Live address dropdown with GPS pin for quick switching between *Home*, *Work*, and custom locations.
-- **Animated Search Bar**: Auto-cycling placeholder showcasing popular dishes (*Biryani*, *Burgers*, *Pizzas*, *Desserts*).
-- **"What's on your mind?" Stories**: High-res circular dish category avatars with 1-tap filtering.
-- **Curated Restaurant Cards**: Floating discount ribbons (*"60% OFF UPTO ₹120"*), verified emerald star ratings, ETA, and price for two.
-- **Dish Customisation Drawer**: Choose portion sizes (*Regular* vs. *Large Handi*) and add-on accompaniments (*Burani Raita*, *Mirchi Ka Salan*).
-- **Floating Bottom Cart Bar**: Sleek sticky drawer that surfaces item counts and 1-tap checkout triggers.
-- **Delivery Rider Tipping & Eco-Options**: Tip buttons (₹20, ₹30, ₹50) with 100% rider proceeds, No-Contact Delivery, and plastic cutlery opt-out.
-- **Itemized Invoice & Promo Coupons**: Item totals, packaging fee, delivery fee (Free > ₹299), GST (5%), platform fees, and coupon savings (`FOODX50`).
-- **Live Courier Tracking & Milestones**: Live bike GPS progress simulation, delivery rider profile (*Vikram Sharma*), handover OTP (`4829`), call hotline, and **120-second grace cancellation**.
-- **Customer Feedback & Ratings**: Verified 1-to-5 star restaurant reviews and testimonials.
+### 🛒 1. Customer Discovery & Ordering Portal (`/`)
+- **Home & Cuisines:** Live category grid, backend-recommended popular dishes, verified partner outlets.
+- **Smart Menu & Filtering (`/menu`):** Debounced instant search, dietary tags (Veg, Non-Veg, Vegan), category filters, and rating/price sorting.
+- **Restaurant Details (`/restaurant/:id`):** Cover banner, real-time operating hours check (`Open` / `Closed`), dishes catalog, customer reviews, and verified review modal.
+- **Cart & Single-Restaurant Guard (`/cart`):** Quantity increments/decrements, automated cart synchronization, and single-restaurant order enforcement.
+- **Checkout:** Strict 6-digit Indian PIN code validation (`/^\d{6}$/`), minimum order threshold validation, and payment method selector (Cash on Delivery / Online Card).
+- **Order Tracking & Management (`/orders`):** Order history with live status badges (`pending`, `preparing`, `ready`, `out_for_delivery`, `delivered`, `cancelled`) and non-blocking 2-step order cancellation for pending orders.
+- **Profile Management (`/profile`):** Personal information, saved delivery address, and password change.
 
-### 🍳 2. Restaurant Partner Suite (Merchant Portal)
-- **Live Kitchen Display System (KDS)**: Real-time ticket management stream with incoming order audio chime simulation.
-- **1-Tap Order Progression**: Transition orders seamlessly from `pending` ➔ `preparing` (cooking) ➔ `ready` (packed) ➔ `out_for_delivery` (rider handover).
-- **Dish Inventory & Stock Control**: Instant 86ing (1-tap out-of-stock toggle) for sold-out menu items.
-- **Menu Publisher**: Add new food items with prices, categories, dietary badges, and image assets.
-- **Outlet Operations**: Operating hours, FSSAI license compliance, support contact, and settlement bank accounts.
+### 👨‍🍳 2. Restaurant Owner Portal (`/owner/*`)
+- **Kitchen Dashboard (`/owner/dashboard`):** Real-time kitchen toggle (`Online / Accepting Orders` ↔ `Offline / Kitchen Closed`), live KPI cards (Active Tickets, Total Menu Items, Revenue GMV, Completed Orders), and incoming orders table.
+- **Outlet Profile Governance (`/owner/restaurant`):** Register new outlet with Cloudinary/multer image upload, update operating hours, minimum delivery order, address, and pincode.
+- **Menu Food CRUD (`/owner/foods`):** Add dish with category, price, veg/non-veg tag, dietary description, and food image; instant stock availability toggle (`In Stock` ↔ `Sold Out`); edit and delete capabilities.
+- **Live KDS Fulfillment Queue (`/owner/orders`):** Filter by ticket stage, customer delivery details, and one-click status advancement controls (`Pending` ➔ `Preparing` ➔ `Ready` ➔ `Out for Delivery` ➔ `Delivered`).
 
-### 🛡️ 3. Super Admin Governance Console
-- **Platform GMV Telemetry**: Real-time Gross Merchandise Value tracking and 20% platform commission cut calculations.
-- **Global Order Stream**: Platform-wide transaction audits across all restaurants and hubs.
-- **System Health Monitor**: Live database and API service status verification.
+### 🛡️ 3. Super Admin Portal (`/admin/*`)
+- **Dedicated Admin Login (`/admin/login`):** Isolated entrance with strict role verification (`role === 'admin'`).
+- **Executive Metrics (`/admin/dashboard`):** Live GMV calculations, verified outlet counts, active user accounts, and platform order volume.
+- **User Directory (`/admin/users`):** Complete user directory with instant role filters (`customer`, `restaurantOwner`, `admin`, `deliveryAgent`).
+- **Restaurant Governance (`/admin/restaurants`):** Audit all registered restaurants, launch public menus, and perform cascade deletions.
+- **Global Food Catalog (`/admin/foods`):** Manage dishes across all restaurants with search and category filtering.
+- **Global Order Ledger (`/admin/orders`):** Filter, search, and override order statuses directly when needed.
 
 ---
 
 ## 🔐 Role-Based Access Control (RBAC) Matrix
 
-| Backend Capability | Customer | Restaurant Partner | Super Admin | Backend Endpoint / Middleware |
-| :--- | :---: | :---: | :---: | :--- |
-| **Browse Kitchens & Dishes** | ✅ | ✅ | ✅ | `GET /api/v1/restaurants`, `GET /api/v1/foods` |
-| **Manage Cart & Checkout** | ✅ | ❌ | ✅ | `GET/POST /api/v1/cart`, `POST /api/v1/orders` |
-| **Post Restaurant Reviews** | ✅ | ❌ | ✅ | `POST /api/v1/reviews` (`verifyJwt`) |
-| **Cancel Order (Grace Period)** | ✅ | ❌ | ✅ | `PUT /api/v1/orders/:id/cancel` (`verifyJwt`) |
-| **Live Kitchen KDS Tickets** | ❌ | ✅ | ✅ | `GET /api/v1/orders/owner/restaurant-orders` (`verifyOwnerOrAdmin`) |
-| **Advance Order Prep Status** | ❌ | ✅ | ✅ | `PUT /api/v1/orders/:id/status` (`verifyOwnerOrAdmin`) |
-| **Add / Edit Menu Dishes** | ❌ | ✅ | ✅ | `POST/PUT /api/v1/foods` (`verifyOwnerOrAdmin`) |
-| **Register / Edit Restaurant** | ❌ | ✅ | ✅ | `POST/PUT /api/v1/restaurants` (`verifyOwnerOrAdmin`) |
-| **Platform GMV & Global Orders** | ❌ | ❌ | ✅ | `GET /api/v1/orders/admin/all` (`verifyAdmin`) |
+| Portal Route | Minimum Role | Allowed Roles | Guard Component |
+| :--- | :--- | :--- | :--- |
+| `/` | Public | All | None |
+| `/menu` | Public | All | None |
+| `/restaurant/:id` | Public | All | None |
+| `/cart` | Customer | `customer` | `ProtectedRoute` |
+| `/orders` | Customer | `customer` | `ProtectedRoute` |
+| `/profile` | Authenticated | All authenticated users | `ProtectedRoute` |
+| `/owner/*` | Restaurant Owner | `restaurantOwner` | `RoleRoute` (`allowedRoles={['restaurantOwner']}`) |
+| `/admin/*` | Super Admin | `admin` | `RoleRoute` (`allowedRoles={['admin']}`) |
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 🛠️ Tech Stack
 
-```
-FoodX Application
-├── Frontend (Client SPA)
-│   ├── React 19 + Vite 8
-│   ├── Tailwind CSS v4 (@tailwindcss/vite)
-│   ├── Lucide React Icons
-│   ├── Canvas Confetti
-│   └── Context API State Management
-└── Backend (REST API Server)
-    ├── Node.js + Express 5
-    ├── MongoDB + Mongoose 9
-    ├── JWT Authentication (Access + Refresh Tokens)
-    ├── Bcrypt Password Hashing
-    ├── Multer + Cloudinary Media Storage
-    └── Cookie-Parser & CORS
-```
+### Frontend (SPA Client)
+- **Framework:** React 19 + Vite 8
+- **Routing:** React Router DOM v7 (Route-level code splitting with `React.lazy()` and `<Suspense>`)
+- **Styling:** Tailwind CSS v4 (`@tailwindcss/vite`)
+- **Icons:** Lucide React
+- **HTTP Client:** Axios (Centralized instance with bearer token interceptor, 401 token refresh queue, and unified error handling)
+- **State Management:** React Context API (`AuthContext`, `CartContext`, `ToastContext`)
+- **Resilience:** Top-level React `ErrorBoundary`
 
----
-
-## 📡 REST API Reference
-
-### 1. Authentication & User Profile (`/api/v1/users`)
-- `POST /register` — Register a new account (`firstName`, `lastName`, `email`, `phone`, `password`, `role`, `address`).
-- `POST /login` — Authenticate user and receive access + refresh tokens.
-- `POST /logout` — Invalidate session and clear auth cookies.
-- `GET /profile` — Retrieve current user profile (`verifyJwt`).
-- `PUT /profile` — Update address, telephone, and details (`verifyJwt`).
-- `PUT /change-password` — Change password (`oldPassword`, `newPassword`).
-
-### 2. Restaurants (`/api/v1/restaurants`)
-- `GET /` — List open restaurants with filters (`search`, `cuisine`, `city`, `sort`).
-- `GET /:id` — Get single restaurant profile & operating details.
-- `POST /register` — Register restaurant partner outlet (`verifyOwnerOrAdmin`).
-- `GET /owner/my-restaurants` — Get restaurants owned by logged-in merchant.
-- `PUT /:id` — Update restaurant details (`verifyOwnerOrAdmin`).
-
-### 3. Food Catalog (`/api/v1/foods`)
-- `GET /` — Browse dishes (`category`, `foodType: 'veg' | 'non-veg'`, `search`).
-- `GET /:id` — Get dish details.
-- `GET /restaurant/:restaurantId` — Get all dishes for a specific restaurant.
-- `POST /` — Create a new dish (`verifyOwnerOrAdmin`).
-- `PUT /:id` — Update dish details or toggle stock availability (`verifyOwnerOrAdmin`).
-- `DELETE /:id` — Delete dish (`verifyOwnerOrAdmin`).
-
-### 4. Cart (`/api/v1/cart`)
-- `GET /` — Retrieve user's active cart with populated dish info.
-- `POST /items` — Add dish to cart (`foodId`, `quantity`).
-- `PATCH /items` — Update item quantity in cart.
-- `DELETE /items/:foodId` — Remove item from cart.
-- `DELETE /clear` — Empty cart.
-
-### 5. Orders & Dispatch (`/api/v1/orders`)
-- `POST /` — Place new order (`restaurantId`, `items`, `deliveryAddress`, `paymentMethod`, `instructions`).
-- `GET /my-orders` — Get consumer order history.
-- `GET /:orderId` — Get single order tracking details.
-- `PUT /:orderId/cancel` — Cancel order within grace period.
-- `GET /owner/restaurant-orders` — Merchant live KDS tickets stream.
-- `PUT /:orderId/status` — Advance order state (`pending` ➔ `preparing` ➔ `ready` ➔ `out_for_delivery` ➔ `delivered`).
-- `GET /admin/all` — Platform-wide orders & GMV telemetry.
-
-### 6. Reviews & Ratings (`/api/v1/reviews`)
-- `GET /restaurant/:restaurantId` — Get reviews and star ratings for a restaurant.
-- `POST /` — Post a 1-5 star review with comments (`verifyJwt`).
+### Backend (REST API Server)
+- **Runtime:** Node.js v20+ with Express 5
+- **Database:** MongoDB + Mongoose 9 ODM
+- **Authentication:** JWT (Access Token + Refresh Token in HttpOnly Cookies & Bearer headers) + Bcrypt
+- **Media Uploads:** Multer with Cloudinary integration
+- **Architecture:** Clean MVC pattern (`routers/`, `controllers/`, `models/`, `middleware/`, `utils/`)
 
 ---
 
@@ -137,21 +87,99 @@ Food Web/
 │   │   ├── utils/           # ApiError, ApiResponse, asyncHandler helpers
 │   │   └── app.js           # Express app setup, CORS, static uploads, error handler
 │   ├── index.js             # Server entrypoint listening on port 5000
-│   ├── test-backend.js      # Backend verification script
 │   └── package.json
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # Modular UI views (Navbar, Explore, Restaurant, Cart, Checkout, Orders, Partner, Admin, Profile, RoleGuard, FloatingCartBar)
-│   │   ├── context/         # Centralized AppContext for auth, cart, orders, and role state
-│   │   ├── services/        # Unified API REST client (api.js)
-│   │   ├── mockData.js      # Fallback datasets and initial menu items
-│   │   ├── App.jsx          # Master application shell
-│   │   ├── index.css        # Tailwind CSS v4 styling & theme tokens
+│   │   ├── components/
+│   │   │   ├── common/      # Reusable UI (Button, Input, Badge, Modal, Skeleton, EmptyState, ErrorBoundary)
+│   │   │   ├── food/        # FoodCard, RestaurantCard, CategoryCard
+│   │   │   └── layout/      # Navbar, Footer
+│   │   ├── constants/       # Order status, user roles, API endpoints
+│   │   ├── context/         # AuthContext, CartContext, ToastContext
+│   │   ├── hooks/           # useAuth, useCart, useToast, useDebounce
+│   │   ├── layouts/         # CustomerLayout, OwnerLayout, AdminLayout
+│   │   ├── pages/
+│   │   │   ├── admin/       # AdminDashboard, UserManagement, AdminRestaurants, AdminFoods, AdminOrders
+│   │   │   ├── auth/        # LoginPage, RegisterPage, AdminLoginPage
+│   │   │   ├── customer/    # HomePage, MenuPage, RestaurantDetailPage, CartPage, OrdersPage, ProfilePage, AboutPage
+│   │   │   └── restaurant/  # OwnerDashboard, RestaurantManagement, FoodManagement, OwnerOrders
+│   │   ├── routes/          # AppRoutes (lazy-loaded), ProtectedRoute, RoleRoute
+│   │   ├── services/        # Centralized Axios API services
+│   │   ├── App.jsx          # Root application component with ErrorBoundary & ToastProvider
+│   │   ├── index.css        # Tailwind CSS imports & global design tokens
 │   │   └── main.jsx         # React DOM entrypoint
-│   ├── vite.config.js
+│   ├── vite.config.js       # Vite configuration with Tailwind CSS plugin
 │   └── package.json
 └── README.md
 ```
+
+---
+
+## 📡 REST API Reference
+
+All backend endpoints are prefixed with `/api/v1`:
+
+### 1. Authentication & Users (`/api/v1/users`)
+- `POST /register` — Register new user account (`firstName`, `lastName`, `email`, `phone`, `password`, `role`, `address`)
+- `POST /login` — Authenticate and receive JWT tokens
+- `POST /logout` — Invalidate session and clear auth cookies
+- `POST /refresh-token` — Rotate expired access token using refresh token
+- `GET /profile` — Retrieve current authenticated user profile (`verifyJwt`)
+- `PUT /profile` — Update name, phone, or address (`verifyJwt`)
+- `PUT /change-password` — Change password (`oldPassword`, `newPassword`)
+- `GET /` — List all registered platform users (`verifyAdmin`)
+
+### 2. Restaurants (`/api/v1/restaurants`)
+- `GET /` — List open restaurants (`search`, `cuisine`, `city`, `sort`)
+- `GET /:id` — Get single restaurant profile & operating details
+- `POST /register` — Register restaurant partner outlet (`verifyOwnerOrAdmin`)
+- `GET /owner/my-restaurants` — Get outlets owned by logged-in merchant (`verifyOwnerOrAdmin`)
+- `PUT /:id` — Update restaurant details (`verifyOwnerOrAdmin`)
+- `DELETE /:id` — Delete restaurant and cascade food items (`verifyOwnerOrAdmin`)
+
+### 3. Food Catalog (`/api/v1/foods`)
+- `GET /` — Browse dishes (`category`, `foodType: 'veg' | 'non-veg'`, `search`)
+- `GET /:id` — Get dish details
+- `GET /restaurant/:restaurantId` — Get all dishes for a specific restaurant
+- `POST /` — Create a new dish (`verifyOwnerOrAdmin`)
+- `PUT /:id` — Update dish details or toggle stock availability (`verifyOwnerOrAdmin`)
+- `DELETE /:id` — Delete dish (`verifyOwnerOrAdmin`)
+
+### 4. Cart (`/api/v1/cart`)
+- `GET /` — Retrieve user's active cart with populated food details
+- `POST /items` — Add dish to cart (`foodId`, `quantity`)
+- `PATCH /items` — Update item quantity in cart
+- `DELETE /items/:foodId` — Remove item from cart
+- `DELETE /clear` — Empty cart
+
+### 5. Orders (`/api/v1/orders`)
+- `POST /` — Place new order (`restaurantId`, `items`, `deliveryAddress`, `paymentMethod`)
+- `GET /my-orders` — Get authenticated customer's order history
+- `GET /:orderId` — Get single order tracking details
+- `PUT /:orderId/cancel` — Cancel pending order
+- `GET /owner/restaurant-orders` — Live KDS tickets stream for restaurant owner
+- `PUT /:orderId/status` — Advance order state (`pending` ➔ `preparing` ➔ `ready` ➔ `out_for_delivery` ➔ `delivered`)
+- `GET /admin/all` — Platform-wide orders & GMV telemetry
+
+### 6. Reviews & Ratings (`/api/v1/reviews`)
+- `GET /restaurant/:restaurantId` — Get reviews and star ratings for a restaurant
+- `POST /` — Submit a 1-5 star review with comments (`verifyJwt`)
+
+---
+
+## 🔑 Demo & Test Credentials
+
+| Role | Portal URL | Email | Password |
+| :--- | :--- | :--- | :--- |
+| **Customer** | [`http://localhost:5173/login`](http://localhost:5173/login) | `customer1@test.com` | `Password123!` |
+| **Restaurant Owner** | [`http://localhost:5173/login`](http://localhost:5173/login) | `owner4@pizzapalace.com` | `Password123!` |
+| **Super Admin** | [`http://localhost:5173/admin/login`](http://localhost:5173/admin/login) | `admin@maincraft.com` | `Password123!` |
+
+*Other Seed Restaurant Owners (Password: `Password123!`):*
+- `owner1@spicegarden.com` (The Spice Garden)
+- `owner2@burgerbeast.com` (Burger Beast)
+- `owner3@dragonwok.com` (Dragon Wok)
+- `owner5@sweetbitescafé.com` (Sweet Bites Café)
 
 ---
 
@@ -160,11 +188,11 @@ Food Web/
 ### Prerequisites
 - **Node.js** (v18.0.0 or higher)
 - **MongoDB** (Local instance running at `mongodb://localhost:27017` or MongoDB Atlas URI)
-- **npm** or **yarn**
+- **npm**
 
 ---
 
-### Step 1: Clone Repository & Setup Backend
+### Step 1: Backend Setup
 
 ```bash
 # Navigate to backend directory
@@ -173,30 +201,15 @@ cd backend
 # Install dependencies
 npm install
 
-# Configure environment variables in backend/.env
-# Example .env configuration:
-PORT=5000
-MONGODB_URL=mongodb://localhost:27017/foodx_delivery
-JWT_ACCESS_SECRET=your_super_secret_access_jwt_key_12345
-JWT_ACCESS_EXPIRES=1d
-JWT_REFRESH_SECRET=your_super_secret_refresh_jwt_key_12345
-JWT_REFRESH_EXPIRES=7d
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-
-# Verify backend integrity
-npm test
-
 # Start backend dev server
-npm run dev
+npm start
 ```
 
-*Backend server will start listening on `http://localhost:5000`.*
+*The backend will run on `http://localhost:5000`.*
 
 ---
 
-### Step 2: Setup Frontend
+### Step 2: Frontend Setup
 
 ```bash
 # Navigate to frontend directory
@@ -205,39 +218,23 @@ cd ../frontend
 # Install dependencies
 npm install
 
-# Start frontend dev server
+# Start Vite dev server
 npm run dev
 ```
 
-*Frontend web application will open at `http://localhost:5173`.*
+*The frontend application will open on `http://localhost:5173`.*
 
 ---
 
 ### Step 3: Production Build
 
 ```bash
-# Build frontend bundle
+cd frontend
 npm run build
-
-# Preview production build
-npm run preview
 ```
 
----
-
-## 👥 Demo Personas (1-Tap Switcher)
-
-The application includes a 1-tap persona switcher in the top navigation bar to test each role:
-
-1. **👤 Customer (*Priya Sharma*)**:
-   - `email`: `priya.sharma@example.com` | `password`: `password123`
-   - Access: Consumer discovery, restaurant menus, cart, checkout, live tracking, and reviews.
-2. **🍳 Restaurant Merchant (*Rajesh Gupta*)**:
-   - `email`: `rajesh@biryanikilo.com` | `password`: `password123`
-   - Access: Kitchen KDS ticket dispatch, instant dish out-of-stock toggles, and menu publishing.
-3. **🛡️ Super Admin (*Anita Deshmukh*)**:
-   - `email`: `anita.ops@foodx.com` | `password`: `password123`
-   - Access: Full platform overview, Gross GMV analytics, 20% platform revenue cut, and universal oversight.
+- **Output:** Built in `dist/` with on-demand chunking (<300kB initial bundle).
+- **Compilation:** Zero warnings, zero errors.
 
 ---
 
