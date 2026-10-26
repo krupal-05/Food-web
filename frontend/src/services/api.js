@@ -1,237 +1,118 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+import axios from 'axios';
+import { API_BASE_URL, ENDPOINTS } from '../constants/api.constants.js';
 
-class ApiService {
-  constructor() {
-    this.token = localStorage.getItem("foodx_access_token") || null;
-  }
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-  setToken(token) {
-    this.token = token;
+// Request Interceptor: Attach Access Token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('food_access_token');
     if (token) {
-      localStorage.setItem("foodx_access_token", token);
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor: Handle Token Refresh & Unified Error Extraction
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
     } else {
-      localStorage.removeItem("foodx_access_token");
+      prom.resolve(token);
     }
-  }
+  });
+  failedQueue = [];
+};
 
-  getToken() {
-    return this.token || localStorage.getItem("foodx_access_token");
-  }
+api.interceptors.response.use(
+  (response) => {
+    // If response follows ApiResponse shape: { statusCode, data, message, success }
+    return response.data?.data !== undefined ? response.data : response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
 
-  async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const headers = { ...options.headers };
-
-    if (!(options.body instanceof FormData)) {
-      headers["Content-Type"] = "application/json";
-    }
-
-    const currentToken = this.getToken();
-    if (currentToken) {
-      headers["Authorization"] = `Bearer ${currentToken}`;
-    }
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-        credentials: "include",
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.message || `HTTP Error ${response.status}`);
+    // Handle 401 and Token Refreshing
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes(ENDPOINTS.AUTH.LOGIN) &&
+      !originalRequest.url?.includes(ENDPOINTS.AUTH.REFRESH_TOKEN)
+    ) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
       }
-      return data;
-    } catch (error) {
-      console.warn(`[API] ${options.method || "GET"} ${endpoint} error:`, error.message);
-      throw error;
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem('food_refresh_token');
+
+      try {
+        const refreshResponse = await axios.post(
+          `${API_BASE_URL}${ENDPOINTS.AUTH.REFRESH_TOKEN}`,
+          { refreshToken },
+          { withCredentials: true }
+        );
+
+        const newAccessToken =
+          refreshResponse.data?.data?.accessToken ||
+          refreshResponse.data?.accessToken;
+        const newRefreshToken =
+          refreshResponse.data?.data?.reFreshToken ||
+          refreshResponse.data?.reFreshToken;
+
+        if (newAccessToken) {
+          localStorage.setItem('food_access_token', newAccessToken);
+          if (newRefreshToken) {
+            localStorage.setItem('food_refresh_token', newRefreshToken);
+          }
+
+          api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+          processQueue(null, newAccessToken);
+          return api(originalRequest);
+        }
+      } catch (refreshErr) {
+        processQueue(refreshErr, null);
+        localStorage.removeItem('food_access_token');
+        localStorage.removeItem('food_refresh_token');
+        localStorage.removeItem('food_user');
+        window.dispatchEvent(new Event('auth:unauthorized'));
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
+      }
     }
-  }
 
-  // --- Auth APIs ---
-  async register(userData) {
-    const res = await this.request("/users/register", {
-      method: "POST",
-      body: JSON.stringify(userData),
-    });
-    if (res?.data?.accessToken) {
-      this.setToken(res.data.accessToken);
-    }
-    return res;
-  }
+    // Extract standardized message
+    const customMessage =
+      error.response?.data?.message ||
+      error.response?.data?.errors?.[0] ||
+      error.message ||
+      'An unexpected network error occurred';
 
-  async login(email, password) {
-    const res = await this.request("/users/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-    if (res?.data?.accessToken) {
-      this.setToken(res.data.accessToken);
-    }
-    return res;
+    error.extractedMessage = customMessage;
+    return Promise.reject(error);
   }
+);
 
-  async logout() {
-    try {
-      await this.request("/users/logout", { method: "POST" });
-    } finally {
-      this.setToken(null);
-    }
-  }
-
-  async getProfile() {
-    return this.request("/users/profile");
-  }
-
-  async updateProfile(profileData) {
-    return this.request("/users/profile", {
-      method: "PUT",
-      body: JSON.stringify(profileData),
-    });
-  }
-
-  async changePassword(oldPassword, newPassword) {
-    return this.request("/users/change-password", {
-      method: "PUT",
-      body: JSON.stringify({ oldPassword, newPassword }),
-    });
-  }
-
-  // --- Restaurant APIs ---
-  async getRestaurants(params = {}) {
-    const query = new URLSearchParams(params).toString();
-    return this.request(`/restaurants${query ? `?${query}` : ""}`);
-  }
-
-  async getRestaurantById(id) {
-    return this.request(`/restaurants/${id}`);
-  }
-
-  async registerRestaurant(formData) {
-    return this.request("/restaurants/register", {
-      method: "POST",
-      body: formData instanceof FormData ? formData : JSON.stringify(formData),
-    });
-  }
-
-  async getMyRestaurants() {
-    return this.request("/restaurants/owner/my-restaurants");
-  }
-
-  async updateRestaurant(id, data) {
-    return this.request(`/restaurants/${id}`, {
-      method: "PUT",
-      body: data instanceof FormData ? data : JSON.stringify(data),
-    });
-  }
-
-  // --- Foods APIs ---
-  async getFoods(params = {}) {
-    const query = new URLSearchParams(params).toString();
-    return this.request(`/foods${query ? `?${query}` : ""}`);
-  }
-
-  async getFoodById(id) {
-    return this.request(`/foods/${id}`);
-  }
-
-  async getFoodsByRestaurant(restaurantId) {
-    return this.request(`/foods/restaurant/${restaurantId}`);
-  }
-
-  async addFood(foodData) {
-    return this.request("/foods", {
-      method: "POST",
-      body: foodData instanceof FormData ? foodData : JSON.stringify(foodData),
-    });
-  }
-
-  async updateFood(id, foodData) {
-    return this.request(`/foods/${id}`, {
-      method: "PUT",
-      body: foodData instanceof FormData ? foodData : JSON.stringify(foodData),
-    });
-  }
-
-  async deleteFood(id) {
-    return this.request(`/foods/${id}`, { method: "DELETE" });
-  }
-
-  // --- Cart APIs ---
-  async getCart() {
-    return this.request("/cart");
-  }
-
-  async addToCart(foodId, quantity = 1) {
-    return this.request("/cart/items", {
-      method: "POST",
-      body: JSON.stringify({ foodId, quantity }),
-    });
-  }
-
-  async updateCartItem(foodId, quantity) {
-    return this.request("/cart/items", {
-      method: "PATCH",
-      body: JSON.stringify({ foodId, quantity }),
-    });
-  }
-
-  async removeCartItem(foodId) {
-    return this.request(`/cart/items/${foodId}`, { method: "DELETE" });
-  }
-
-  async clearCart() {
-    return this.request("/cart/clear", { method: "DELETE" });
-  }
-
-  // --- Orders APIs ---
-  async createOrder(orderPayload) {
-    return this.request("/orders", {
-      method: "POST",
-      body: JSON.stringify(orderPayload),
-    });
-  }
-
-  async getMyOrders() {
-    return this.request("/orders/my-orders");
-  }
-
-  async getOrderById(orderId) {
-    return this.request(`/orders/${orderId}`);
-  }
-
-  async cancelOrder(orderId) {
-    return this.request(`/orders/${orderId}/cancel`, { method: "PUT" });
-  }
-
-  async getRestaurantOrders() {
-    return this.request("/orders/owner/restaurant-orders");
-  }
-
-  async updateOrderStatus(orderId, status, paymentStatus) {
-    return this.request(`/orders/${orderId}/status`, {
-      method: "PUT",
-      body: JSON.stringify({ status, paymentStatus }),
-    });
-  }
-
-  async getAllOrders() {
-    return this.request("/orders/admin/all");
-  }
-
-  // --- Reviews APIs ---
-  async getReviews(restaurantId) {
-    return this.request(`/reviews/restaurant/${restaurantId}`);
-  }
-
-  async addReview(restaurantId, rating, comment) {
-    return this.request("/reviews", {
-      method: "POST",
-      body: JSON.stringify({ restaurantId, rating, comment }),
-    });
-  }
-}
-
-export const api = new ApiService();
 export default api;
